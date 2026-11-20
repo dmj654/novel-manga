@@ -12,6 +12,14 @@ settings:
     CODE_SIGN_STYLE: Manual
     CODE_SIGNING_ALLOWED: NO
 
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: 6.0.0
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation
+    from: 0.9.0
+
 targets:
   NovelManga:
     type: application
@@ -20,6 +28,11 @@ targets:
       - path: App
       - path: Features
       - path: Core
+    dependencies:
+      - package: GRDB
+        product: GRDB
+      - package: ZIPFoundation
+        product: ZIPFoundation
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.novelmanga.app
