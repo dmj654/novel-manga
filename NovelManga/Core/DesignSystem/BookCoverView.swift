@@ -15,16 +15,28 @@ struct BookCoverView: View {
 
     @ViewBuilder
     private var coverContent: some View {
-        if let image = loadImage() {
+        if let path = book.coverPath, path.hasPrefix("http"), let url = URL(string: path) {
+            AsyncImage(url: url) { phase in
+                if case .success(let image) = phase {
+                    image.resizable().scaledToFill()
+                } else {
+                    placeholder
+                }
+            }
+        } else if let image = loadImage() {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
         } else {
-            ZStack {
-                Rectangle().fill(Theme.Palette.separator.opacity(0.15))
-                Image(systemName: book.kind == .comic ? "photo.on.rectangle" : "book.closed")
-                    .foregroundStyle(Theme.Palette.secondaryText)
-            }
+            placeholder
+        }
+    }
+
+    private var placeholder: some View {
+        ZStack {
+            Rectangle().fill(Theme.Palette.separator.opacity(0.15))
+            Image(systemName: book.kind == .comic ? "photo.on.rectangle" : "book.closed")
+                .foregroundStyle(Theme.Palette.secondaryText)
         }
     }
 

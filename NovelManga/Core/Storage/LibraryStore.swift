@@ -145,6 +145,109 @@ final class LibraryStore {
         }
     }
 
+    // MARK: - Source
+
+    func sources() throws -> [Source] {
+        try dbQueue.read { db in
+            try Source.fetchAll(db, sql: "SELECT * FROM sources ORDER BY created_at ASC")
+        }
+    }
+
+    func enabledSources() throws -> [Source] {
+        try dbQueue.read { db in
+            try Source.fetchAll(db, sql: "SELECT * FROM sources WHERE enabled = 1 ORDER BY created_at ASC")
+        }
+    }
+
+    func source(id: String) throws -> Source? {
+        try dbQueue.read { db in
+            try Source.fetchOne(db, sql: "SELECT * FROM sources WHERE id = ?", arguments: [id])
+        }
+    }
+
+    /// 新增或覆盖同 id 的书源
+    func save(source: Source) throws {
+        try dbQueue.write { db in
+            try db.execute(sql: """
+            INSERT INTO sources (id, name, type, enabled, rules_json, last_status, last_checked_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              name = excluded.name,
+              type = excluded.type,
+              enabled = excluded.enabled,
+              rules_json = excluded.rules_json
+            """, arguments: [source.id, source.name, source.type, source.enabled, source.rulesJSON,
+                              source.lastStatus, source.lastCheckedAt, source.createdAt])
+        }
+    }
+
+    func setSourceEnabled(id: String, enabled: Bool) throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "UPDATE sources SET enabled = ? WHERE id = ?", arguments: [enabled, id])
+        }
+    }
+
+    func deleteSource(id: String) throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "DELETE FROM sources WHERE id = ?", arguments: [id])
+        }
+    }
+
+    // MARK: - 主页卡片
+
+    static let defaultCardTypes: [HomeCardType] = [.continueReading, .newBooks, .recommend]
+
+    func cards() throws -> [HomeCard] {
+        try dbQueue.read { db in
+            try HomeCard.fetchAll(db, sql: "SELECT * FROM cards ORDER BY sort ASC")
+        }
+    }
+
+    /// 首次启动写入默认卡片流（D1），之后完全按用户配置
+    func ensureDefaultCards() throws {
+        try dbQueue.write { db in
+            let count = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM cards") ?? 0
+            guard count == 0 else { return }
+            for (index, type) in Self.defaultCardTypes.enumerated() {
+                try HomeCard(type: type, sort: index).insert(db)
+            }
+        }
+    }
+
+    func saveCards(_ cards: [HomeCard]) throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "DELETE FROM cards")
+            for (index, card) in cards.enumerated() {
+                var stored = card
+                stored.sort = index
+                try stored.insert(db)
+            }
+        }
+    }
+
+    func continueReading(limit: Int = 6) throws -> [Book] {
+        try dbQueue.read { db in
+            try Book.fetchAll(db, sql: """
+            SELECT b.* FROM books b
+            JOIN progress p ON p.book_id = b.id
+            ORDER BY p.updated_at DESC
+            LIMIT ?
+            """, arguments: [limit])
+        }
+    }
+
+    func unstartedShelfBooks(limit: Int = 6) throws -> [Book] {
+        try dbQueue.read { db in
+            try Book.fetchAll(db, sql: """
+            SELECT b.* FROM books b
+            LEFT JOIN progress p ON p.book_id = b.id
+            WHERE b.in_shelf = 1 AND p.book_id IS NULL
+            ORDER BY COALESCE(b.favorited_at, b.created_at) DESC
+            LIMIT ?
+            """, arguments: [limit])
+        }
+    }
+
     // MARK: - Progress
 
     func progress(bookID: String) throws -> ReadingProgress? {

@@ -110,13 +110,36 @@ struct BookDetailView: View {
             NovelReaderView(book: book,
                             units: units,
                             startUnitIdx: route.unitIdx,
-                            startCharOffset: startOffset(for: route.unitIdx))
+                            startCharOffset: startOffset(for: route.unitIdx),
+                            provider: textProvider())
+        } else if book.bookOrigin == .online, let rule = onlineRule() {
+            OnlineComicReaderView(book: book,
+                                  units: units,
+                                  startUnitIdx: route.unitIdx,
+                                  startPageIdx: startPage(for: route.unitIdx),
+                                  client: env.sourceClient,
+                                  rule: rule)
         } else {
             ComicReaderView(book: book,
                             units: units,
                             startUnitIdx: route.unitIdx,
                             startPageIdx: startPage(for: route.unitIdx))
         }
+    }
+
+    private func onlineRule() -> SourceRule? {
+        guard let sourceID = book.sourceID,
+              let source = env.sources(enabledOnly: false).first(where: { $0.id == sourceID }) else {
+            return nil
+        }
+        return try? source.decodedRule()
+    }
+
+    private func textProvider() -> any ChapterProviding {
+        if let rule = onlineRule() {
+            return OnlineChapterProvider(client: env.sourceClient, rule: rule)
+        }
+        return LocalChapterProvider()
     }
 
     private func startOffset(for unitIdx: Int) -> Int {

@@ -7,6 +7,7 @@ struct NovelReaderView: View {
 
     let book: Book
     let units: [Unit]
+    let provider: any ChapterProviding
 
     @State private var unitIdx: Int
     @State private var charOffset: Int
@@ -17,13 +18,19 @@ struct NovelReaderView: View {
     @State private var showTOC = false
     @State private var showSettings = false
     @State private var saveTask: Task<Void, Never>?
+    @State private var loadTask: Task<Void, Never>?
 
     @AppStorage("novel.fontSize") private var fontSize: Double = 18
     @AppStorage("novel.lineSpacing") private var lineSpacing: Double = 8
 
-    init(book: Book, units: [Unit], startUnitIdx: Int, startCharOffset: Int) {
+    init(book: Book,
+         units: [Unit],
+         startUnitIdx: Int,
+         startCharOffset: Int,
+         provider: any ChapterProviding = LocalChapterProvider()) {
         self.book = book
         self.units = units
+        self.provider = provider
         let safeIndex = min(max(startUnitIdx, 0), max(units.count - 1, 0))
         _unitIdx = State(initialValue: safeIndex)
         _charOffset = State(initialValue: startCharOffset)
@@ -178,19 +185,24 @@ struct NovelReaderView: View {
             loadError = "找不到这一章"
             return
         }
-        do {
-            let text = try ChapterTextStore().text(for: unit)
-            let parsed = NovelTextLayout.paragraphs(from: text)
-            paragraphs = parsed
-            textCount = text.count
-            let target = NovelTextLayout.paragraphIndex(forCharOffset: restoreOffset, in: parsed)
-            topIndex = target
-            charOffset = restoreOffset
-            loadError = parsed.isEmpty ? "这一章没有正文" : nil
-        } catch {
-            paragraphs = []
-            textCount = 0
-            loadError = "读取失败：\(error.localizedDescription)"
+        loadTask?.cancel()
+        loadTask = Task {
+            do {
+                let text = try await provider.text(for: unit)
+                guard !Task.isCancelled else { return }
+                let parsed = NovelTextLayout.paragraphs(from: text)
+                paragraphs = parsed
+                textCount = text.count
+                let target = NovelTextLayout.paragraphIndex(forCharOffset: restoreOffset, in: parsed)
+                topIndex = target
+                charOffset = restoreOffset
+                loadError = parsed.isEmpty ? "这一章没有正文" : nil
+            } catch {
+                guard !Task.isCancelled else { return }
+                paragraphs = []
+                textCount = 0
+                loadError = "读取失败：\(error.localizedDescription)"
+            }
         }
     }
 
