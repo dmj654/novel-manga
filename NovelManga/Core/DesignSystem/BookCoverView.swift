@@ -7,22 +7,25 @@ struct BookCoverView: View {
     var size: CGFloat = 44
 
     var body: some View {
-        Group {
-            if let image = loadImage() {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                ZStack {
-                    Rectangle().fill(Palette.separator.opacity(0.15))
-                    Image(systemName: book.kind == .comic ? "photo.on.rectangle" : "book.closed")
-                        .foregroundStyle(Palette.secondaryText)
-                }
+        coverContent
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.cover))
+            .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private var coverContent: some View {
+        if let image = loadImage() {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+        } else {
+            ZStack {
+                Rectangle().fill(Theme.Palette.separator.opacity(0.15))
+                Image(systemName: book.kind == .comic ? "photo.on.rectangle" : "book.closed")
+                    .foregroundStyle(Theme.Palette.secondaryText)
             }
         }
-        .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: Radius.cover6))
-        .accessibilityHidden(true)
     }
 
     private func loadImage() -> UIImage? {
@@ -36,7 +39,7 @@ struct BookRow: View {
     let book: Book
 
     var body: some View {
-        HStack(spacing: Spacing.m12) {
+        HStack(spacing: Theme.Spacing.m) {
             BookCoverView(book: book)
             VStack(alignment: .leading, spacing: 2) {
                 Text(book.title)
@@ -44,12 +47,12 @@ struct BookRow: View {
                     .lineLimit(1)
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundStyle(Palette.secondaryText)
+                    .foregroundStyle(Theme.Palette.secondaryText)
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
         }
-        .padding(.vertical, Spacing.xs4)
+        .padding(.vertical, Theme.Spacing.xs)
         .accessibilityElement(children: .combine)
     }
 
