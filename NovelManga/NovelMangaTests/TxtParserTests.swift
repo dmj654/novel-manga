@@ -55,6 +55,19 @@ final class TxtParserTests: XCTestCase {
         XCTAssertEqual(TxtParser.bookTitle(fileName: "凡人修仙传.txt", text: ""), "凡人修仙传")
     }
 
+    func testSentenceStartingWithChapterWordIsNotAChapter() {
+        let text = """
+        第一章 起
+        第一章的内容在这里。
+        第二章 承
+        第二章的内容也在这里。
+        """
+        let book = TxtParser.parse(text: text, fileName: "句子.txt")
+        XCTAssertEqual(book.units.count, 2)
+        XCTAssertEqual(book.units[0].title, "第一章 起")
+        XCTAssertTrue(book.units[0].text?.contains("第一章的内容在这里") == true)
+    }
+
     func testEmptyTextProducesNoUnits() {
         let book = TxtParser.parse(text: "   \n\n  ", fileName: "空.txt")
         XCTAssertTrue(book.units.isEmpty)

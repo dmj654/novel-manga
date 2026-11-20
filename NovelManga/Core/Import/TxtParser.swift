@@ -33,16 +33,31 @@ enum TxtParser {
     private static let chapterRegex: NSRegularExpression = {
         let pattern = "^\\s*(?:第\\s*[0-9０-９零一二三四五六七八九十百千万两〇]+\\s*[章节回卷篇集话話]"
             + "|Chapter\\s+\\d+"
-            + "|\\d{1,4}\\s*[、.．]\\s*\\S"
+            + "|\\d{1,4}\\s*[、.．]"
             + "|序章|楔子|前言|后记|尾声)"
         return try! NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
     }()
+
+    /// 正文里以「第一章的…」「第二章是…」开头的句子不是标题，用它挡住误判
+    private static let continuationCharacters: Set<Character> = [
+        "的", "是", "中", "里", "内", "所", "就", "都", "也", "又", "还",
+        "在", "有", "要", "和", "与", "及", "把", "被", "让", "使", "了", "着"
+    ]
 
     static func isChapterTitle(_ line: String) -> Bool {
         let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed.count <= 40 else { return false }
         let range = NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)
-        return chapterRegex.firstMatch(in: trimmed, options: [], range: range) != nil
+        guard let match = chapterRegex.firstMatch(in: trimmed, options: [], range: range),
+              let matchRange = Range(match.range, in: trimmed) else {
+            return false
+        }
+
+        let rest = trimmed[matchRange.upperBound...]
+        guard let next = rest.first else { return true }
+        if next.isWhitespace { return true }
+        if "：:、·—-_（(【[/".contains(next) { return true }
+        return !continuationCharacters.contains(next)
     }
 
     /// 切章：返回 (标题, 正文)。没有任何章节标记时整篇作为一章。
