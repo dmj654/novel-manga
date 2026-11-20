@@ -15,10 +15,11 @@ struct Source: Codable, FetchableRecord, PersistableRecord, Identifiable, Hashab
     var createdAt: Int64
 
     enum CodingKeys: String, CodingKey {
-        case id, name, type, enabled, createdAt
+        case id, name, type, enabled
         case rulesJSON = "rules_json"
         case lastStatus = "last_status"
         case lastCheckedAt = "last_checked_at"
+        case createdAt = "created_at"
     }
 
     init(rule: SourceRule, enabled: Bool = true, now: Date = Date()) throws {
