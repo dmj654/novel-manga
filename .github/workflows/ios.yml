@@ -1,0 +1,98 @@
+name: iOS Build & Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-14
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: NovelManga
+        run: xcodegen generate
+
+      - name: Pick an available iPhone simulator
+        id: sim
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, subprocess, sys
+          data = json.loads(subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"]))
+          candidates = []
+          for runtime, devices in data.get("devices", {}).items():
+              if "iOS" not in runtime:
+                  continue
+              for d in devices:
+                  if d.get("isAvailable") and d.get("name", "").startswith("iPhone"):
+                      candidates.append((runtime, d["name"], d["udid"]))
+          if not candidates:
+              sys.exit("no available iPhone simulator")
+          candidates.sort(reverse=True)
+          runtime, name, udid = candidates[0]
+          print("udid=" + udid)
+          print("device=" + name.replace(" ", "_"))
+          PY
+
+      - name: Run unit tests
+        working-directory: NovelManga
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project NovelManga.xcodeproj \
+            -scheme NovelManga \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee ../test.log
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-log
+          path: test.log
+          if-no-files-found: ignore
+
+      - name: Build unsigned app bundle
+        if: success()
+        working-directory: NovelManga
+        run: |
+          xcodebuild build \
+            -project NovelManga.xcodeproj \
+            -scheme NovelManga \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Package unsigned ipa
+        if: success()
+        run: |
+          mkdir -p out/Payload
+          cp -R NovelManga/build/Build/Products/Release-iphoneos/NovelManga.app out/Payload/
+          cd out && zip -qry NovelManga-unsigned.ipa Payload
+
+      - name: Upload unsigned ipa
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NovelManga-unsigned-ipa
+          path: out/NovelManga-unsigned.ipa
+          if-no-files-found: warn
