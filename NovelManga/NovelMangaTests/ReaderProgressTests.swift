@@ -25,8 +25,9 @@ final class NovelTextLayoutTests: XCTestCase {
         let text = "甲\n乙\n丙"
         let paragraphs = NovelTextLayout.paragraphs(from: text)
         XCTAssertEqual(NovelTextLayout.paragraphIndex(forCharOffset: 0, in: paragraphs), 0)
-        XCTAssertEqual(NovelTextLayout.paragraphIndex(forCharOffset: 1, in: paragraphs), 1)
-        XCTAssertEqual(NovelTextLayout.paragraphIndex(forCharOffset: 5, in: paragraphs), 2)
+        XCTAssertEqual(NovelTextLayout.paragraphIndex(forCharOffset: 1, in: paragraphs), 0)
+        XCTAssertEqual(NovelTextLayout.paragraphIndex(forCharOffset: 2, in: paragraphs), 1)
+        XCTAssertEqual(NovelTextLayout.paragraphIndex(forCharOffset: 4, in: paragraphs), 2)
         XCTAssertEqual(NovelTextLayout.paragraphIndex(forCharOffset: 100, in: paragraphs), 2)
         XCTAssertEqual(NovelTextLayout.paragraphIndex(forCharOffset: 0, in: []), 0)
     }
