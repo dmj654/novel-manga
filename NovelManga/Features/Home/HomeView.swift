@@ -22,7 +22,11 @@ struct HomeView: View {
                 List {
                     Section("最近导入") {
                         ForEach(env.recentBooks.prefix(6)) { book in
-                            BookRow(book: book)
+                            NavigationLink {
+                                BookDetailView(book: book)
+                            } label: {
+                                BookRow(book: book)
+                            }
                         }
                     }
                 }

@@ -93,4 +93,27 @@ final class AppEnvironment: ObservableObject {
         try? store?.deleteBook(id: bookID)
         reload()
     }
+
+    // MARK: - 阅读
+
+    func units(bookID: String) -> [Unit] {
+        (try? store?.units(bookID: bookID)) ?? []
+    }
+
+    func pages(bookID: String, unitIdx: Int) -> [ComicPage] {
+        (try? store?.pages(bookID: bookID, unitIdx: unitIdx)) ?? []
+    }
+
+    func progress(bookID: String) -> ReadingProgress? {
+        try? store?.progress(bookID: bookID)
+    }
+
+    func saveProgress(_ progress: ReadingProgress) {
+        try? store?.save(progress: progress)
+    }
+
+    func touchOpened(bookID: String) {
+        try? store?.touchOpened(bookID: bookID)
+        reload()
+    }
 }

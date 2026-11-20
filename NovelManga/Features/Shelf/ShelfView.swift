@@ -22,8 +22,12 @@ struct ShelfView: View {
             } else {
                 List {
                     ForEach(env.shelfBooks) { book in
-                        BookRow(book: book)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        NavigationLink {
+                            BookDetailView(book: book)
+                        } label: {
+                            BookRow(book: book)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
                                     pendingDelete = book
                                 } label: {
